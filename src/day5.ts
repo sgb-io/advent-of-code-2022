@@ -60,7 +60,8 @@ function parseInstructions(rawStacks: string) {
 
 function rearrangeStacks(
   startingStacks: StackRowGroups,
-  instructions: string[]
+  instructions: string[],
+  retainOrderOfCrates: boolean
 ): string {
   // maintain a list of columns based on the starting stacks
   // mutate it using the instructions
@@ -101,10 +102,12 @@ function rearrangeStacks(
         "End col was missing those items, does this step make sense?"
       );
     }
-    const movingItemsA = startColItems
+    const movingItemsUnordered = startColItems
       .filter((c) => typeof c !== "undefined")
       .slice(0, numToMove);
-    const movingItems = movingItemsA.reverse();
+    const movingItems = retainOrderOfCrates
+      ? movingItemsUnordered
+      : movingItemsUnordered.reverse();
     const remainingStartCol = startColItems.slice(
       numToMove,
       startColItems.length
@@ -138,9 +141,9 @@ function rearrangeStacks(
   const startingStacks = parseStartingStacks(rawStacks);
   const instructions = parseInstructions(rawStacks);
 
-  const part1Answer = rearrangeStacks(startingStacks, instructions);
+  const part1Answer = rearrangeStacks(startingStacks, instructions, false);
   console.log("Part 1 Answer:", part1Answer);
 
-  const part2Answer = "todo";
+  const part2Answer = rearrangeStacks(startingStacks, instructions, true);
   console.log("Part 2 Answer:", part2Answer);
 })();
