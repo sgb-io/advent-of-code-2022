@@ -1,6 +1,5 @@
 import { resolve } from "path";
-import { chmod, promises as fs } from "fs";
-import { dir } from "console";
+import { promises as fs } from "fs";
 
 // Build a simple tree structure of the file system
 // Calculate the sizes of all directories, regardless of nesting
@@ -286,31 +285,43 @@ function calculateDirectorySizes(rootDir: Dir, allRelevantPaths: Path[]) {
     }
   });
 
+  // check that all path + name combinations are unique
+  // stringify and add to a set, check length
+  const pathStrings = new Set();
+  allRelevantPaths.forEach((p) => {
+    const asString = p.currentPath.join("-");
+    console.log(asString);
+    pathStrings.add(asString);
+  });
+
   return sizes.filter((n) => n <= 100_000);
 }
 
 (async () => {
-  const rawCommands = await fs.readFile(resolve(__dirname, "./day7test.txt"), {
-    encoding: "utf-8",
-  });
+  const rawCommands = await fs.readFile(
+    resolve(__dirname, "./computerCommands.txt"),
+    {
+      encoding: "utf-8",
+    }
+  );
   const directoryStructure = parseRawCommands(rawCommands);
-  console.log(JSON.stringify(directoryStructure));
-  console.log(directoryStructure);
 
   const directorySizes = calculateDirectorySizes(
     directoryStructure,
     allRelevantPaths
   );
-  console.log(directorySizes);
 
   const total = directorySizes.reduce((total, size) => {
     return total + size;
   }, 0);
 
   // Should be 95437 using the test
+  // 1034488 is incorrect for the real data
+  // Real answer should be 1427048
   const part1Answer = total;
   console.log("Part 1 Answer:", part1Answer);
 
+  // Real answer should be 2940614
   const part2Answer = "todo";
   console.log("Part 2 Answer:", part2Answer);
 })();

@@ -1,0 +1,35 @@
+$ cd /
+$ ls
+dir ctd
+80649 mwcj.pmh
+212527 nbb.ztq
+dir pgqmwn
+152170 scr.smr
+17637 snqcgbs.nhv
+dir tmw
+dir vtm
+$ cd ctd
+$ ls
+dir bblsqnwl
+dir gzcjrs
+dir pgqmwn
+dir qzgjp
+dir shmvmqv
+$ cd bblsqnwl
+$ ls
+dir rng
+dir foo
+$ cd rng
+$ ls
+293353 qcjbfggw.tjj
+$ cd ..
+$ cd foo
+$ ls
+14500 foo1.txt
+7200 foo2.txt
+$ cd ..
+$ cd ..
+$ cd tmw
+$ ls
+19500 foo3.txt
+5600 foo4
