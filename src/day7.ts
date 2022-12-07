@@ -32,6 +32,13 @@ type LsInstruction = {
 
 type Instructions = Array<CdInstruction | LsInstruction>;
 
+type Path = {
+  currentPath: string[];
+  dirName: string;
+};
+
+const allRelevantPaths: Path[] = [];
+
 function convertCommandsToInstructions(rawCommands: string): Instructions {
   const instructions: Instructions = [];
   let lsLines: string[] = [];
@@ -39,12 +46,19 @@ function convertCommandsToInstructions(rawCommands: string): Instructions {
   const lines = rawCommands.split("\n");
   let capturing = false;
 
-  lines.forEach((line) => {
-    if (capturing && line.startsWith("$")) {
+  lines.forEach((line, lineIndex) => {
+    if (capturing && !line.startsWith("$")) {
+      lsLines.push(line);
+    }
+
+    const shouldStopCapturing =
+      line.startsWith("$") || lineIndex + 1 === lines.length;
+    if (capturing && shouldStopCapturing) {
       const lsInstruction: LsInstruction = {
         type: "ls",
         contents: [],
       };
+
       lsLines.forEach((lsLine) => {
         if (lsLine.startsWith("dir")) {
           lsInstruction.contents.push({
@@ -78,10 +92,6 @@ function convertCommandsToInstructions(rawCommands: string): Instructions {
 
     if (line.startsWith("$ ls")) {
       capturing = true;
-    }
-
-    if (capturing && !line.startsWith("$")) {
-      lsLines.push(line);
     }
   });
 
@@ -193,14 +203,20 @@ function parseRawCommands(rawCommands: string): Dir {
         currentPath.push(path);
 
         // Mutates rootDir to create all directories
-        createDirDfs(rootDir, currentPath, path);
-        currentDir = getDirDfs(currentDir, currentPath, path);
+        createDirDfs(rootDir, [...currentPath], path);
+        currentDir = getDirDfs(currentDir, [...currentPath], path);
+
+        // TODO should end up with 3: a, d, e (ingoring the root)
+        allRelevantPaths.push({
+          currentPath: [...currentPath],
+          dirName: currentDir.name,
+        });
       }
 
       // Note: am assuming that the instructions are valid, i.e. they don't try to exit the root dir
       if (path === "..") {
-        currentDir = getParentDirDfs(rootDir, currentPath);
-        currentPath = currentPath.slice(0, currentPath.length - 1);
+        currentDir = getParentDirDfs(rootDir, [...currentPath]);
+        currentPath = [...currentPath.slice(0, currentPath.length - 1)];
       }
     }
 
@@ -209,33 +225,90 @@ function parseRawCommands(rawCommands: string): Dir {
     // We rely on the `cd` commands to build the structure
 
     if (instruction.type === "ls") {
-      console.log("TODO apply ls output to", currentDir);
       const files = instruction.contents.filter(
         (c) => c.type === "file"
       ) as File[];
-      addFilesToDir(rootDir, currentPath, currentDir.name, files);
+      addFilesToDir(rootDir, [...currentPath], currentDir.name, files);
     }
   }
-
-  // console.log(JSON.stringify());
-
-  // Follow cd commands around the structure (currentDir)
-  // Add to the structure when we see `ls` commands
 
   return rootDir;
 }
 
-(async () => {
-  const rawCommands = await fs.readFile(
-    resolve(__dirname, "./computerCommands.txt"),
-    {
-      encoding: "utf-8",
-    }
+function getFullDirectorySize(directory: Dir, startingSize: number): number {
+  let totalSize = startingSize;
+  const childrenKeys = Object.keys(directory.children);
+  const childFiles = childrenKeys
+    .filter((k) => directory.children[k].type === "file")
+    .map((k) => directory.children[k]) as File[];
+  const childDirKeys = childrenKeys.filter(
+    (k) => directory.children[k].type === "dir"
   );
-  const directoryStructure = parseRawCommands(rawCommands);
-  // console.log(directoryStructure);
 
-  const part1Answer = "todo";
+  // No child dirs - base case
+  if (childDirKeys.length === 0) {
+    // return just the size of the files
+    const sizes = childFiles.map((f) => f.size);
+
+    return (
+      startingSize +
+      sizes.reduce((total, fileSize) => {
+        return total + fileSize;
+      }, 0)
+    );
+  }
+
+  // Has child dirs, but also local files
+  if (childFiles.length) {
+    const sizes = childFiles.map((f) => f.size);
+    totalSize += sizes.reduce((total, fileSize) => {
+      return total + fileSize;
+    }, 0);
+  }
+
+  childDirKeys.forEach((k) => {
+    const childDirSize = getFullDirectorySize(directory.children[k] as Dir, 0);
+    totalSize += childDirSize;
+  });
+
+  return totalSize;
+}
+
+function calculateDirectorySizes(rootDir: Dir, allRelevantPaths: Path[]) {
+  const sizes: number[] = [];
+
+  allRelevantPaths.forEach((path) => {
+    const { dirName, currentPath } = path;
+    const directory = getDirDfs(rootDir, currentPath, dirName);
+    if (dirName !== "/") {
+      const size = getFullDirectorySize(directory, 0);
+      sizes.push(size);
+    }
+  });
+
+  return sizes.filter((n) => n <= 100_000);
+}
+
+(async () => {
+  const rawCommands = await fs.readFile(resolve(__dirname, "./day7test.txt"), {
+    encoding: "utf-8",
+  });
+  const directoryStructure = parseRawCommands(rawCommands);
+  console.log(JSON.stringify(directoryStructure));
+  console.log(directoryStructure);
+
+  const directorySizes = calculateDirectorySizes(
+    directoryStructure,
+    allRelevantPaths
+  );
+  console.log(directorySizes);
+
+  const total = directorySizes.reduce((total, size) => {
+    return total + size;
+  }, 0);
+
+  // Should be 95437 using the test
+  const part1Answer = total;
   console.log("Part 1 Answer:", part1Answer);
 
   const part2Answer = "todo";
