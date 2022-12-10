@@ -58,14 +58,6 @@ function applyHeadMove(
     ) {
       const firstMoveDirection: Direction =
         updatedHeadPos[1] < updatedTailPosition[1] ? "U" : "D";
-      // the first diaganol A shift should be U
-      console.log(
-        "DIAGANOL A SHIFT DIRECTION",
-        firstMoveDirection,
-        "based on",
-        updatedHeadPos[1],
-        updatedTailPosition[1]
-      );
       const firstStep = applySingleMove(
         updatedTailPosition,
         firstMoveDirection
@@ -73,23 +65,6 @@ function applyHeadMove(
       const secondStep = applySingleMove(firstStep, direction);
       tailSteps.push(secondStep);
       updatedTailPosition = [...secondStep];
-
-      console.log("*****************************");
-      console.log(
-        "(diaganol A) for move",
-        direction,
-        num,
-        "headSteps were",
-        headSteps
-      );
-      console.log(
-        "(diaganol A) for move",
-        direction,
-        num,
-        "tailSteps were",
-        tailSteps
-      );
-      console.log("*****************************");
 
       continue;
     }
@@ -109,24 +84,6 @@ function applyHeadMove(
       const secondStep = applySingleMove(firstStep, direction);
       tailSteps.push(secondStep);
       updatedTailPosition = [...secondStep];
-
-      console.log("*****************************");
-      console.log(
-        "(diaganol B) for move",
-        direction,
-        num,
-        "headSteps were",
-        headSteps
-      );
-      console.log(
-        "(diaganol B) for move",
-        direction,
-        num,
-        "tailSteps were",
-        tailSteps
-      );
-      console.log("*****************************");
-
       continue;
     }
 
@@ -142,6 +99,10 @@ function applyHeadMove(
       continue;
     }
 
+    if (verticalGap === 0 && horizontalGap === 0) {
+      continue;
+    }
+
     // Simple horizontal or vertical tail moves
     const updatedTailPos = applySingleMove(updatedTailPosition, direction);
     tailSteps.push(updatedTailPos);
@@ -149,12 +110,6 @@ function applyHeadMove(
       ? [...updatedTailPos]
       : updatedTailPosition;
   }
-
-  console.log("updatedTailPosition", updatedTailPosition);
-  console.log("*****************************");
-  console.log("for move", direction, num, "headSteps were", headSteps);
-  console.log("for move", direction, num, "tailSteps were", tailSteps);
-  console.log("*****************************");
 
   return {
     headSteps,
@@ -167,8 +122,6 @@ function simulateMotion(rawRopes: string) {
     const [direction, num] = line.split(" ");
     return [direction as Direction, parseInt(num, 10)];
   });
-
-  // TODO maybe the total is always at least 1 to account for start position
 
   // X (Horizontal pos), Y (Vertical pos)
   const allTailPositions: number[][] = [[0, 0]];
@@ -207,23 +160,16 @@ function simulateMotion(rawRopes: string) {
 }
 
 (async () => {
-  const rawRopes = await fs.readFile(resolve(__dirname, "./day9test.txt"), {
+  const rawRopes = await fs.readFile(resolve(__dirname, "./ropes.txt"), {
     encoding: "utf-8",
   });
 
   const positionsVisited = simulateMotion(rawRopes);
 
   // Part 1 test answer: 13
-  // 6502 is too high
-  // Part 1 real answer:
+  // Part 1 real answer: 6271
   const part1Answer = positionsVisited;
   console.log("Part 1 Answer:", part1Answer);
-
-  if (part1Answer !== 13) {
-    throw new Error(
-      `Part 1 answer against test data should equal 13, got ${part1Answer}`
-    );
-  }
 
   // Part 2 test answer:
   // Part 2 real answer:
