@@ -5,6 +5,9 @@ const INTERESTING_CYCLES = [20, 60, 100, 140, 140, 180, 220];
 function listenToSignalStrength(rawData: string) {
   const instructions = [...rawData.split("\n")];
   const signalStrenghs: number[] = [];
+  const screenPixels: string[][] = [[], [], [], [], [], []]; // 40x6 pixels
+
+  let screenRow = 0;
   let currentRegisterValue = 1;
   let cycles = 0;
   let nextValue: number | undefined = undefined;
@@ -16,22 +19,25 @@ function listenToSignalStrength(rawData: string) {
       signalStrenghs.push(currentRegisterValue * cycles);
     }
 
+    // Taking the current register value and cycle, return a . or #
+    if (screenPixels[screenRow].length === 40) {
+      screenRow += 1;
+    }
+    const hitZones = [
+      currentRegisterValue - 1,
+      currentRegisterValue,
+      currentRegisterValue + 1,
+    ];
+    const rowCycle = cycles - screenRow * 40;
+    const pixelLit = hitZones.includes(rowCycle - 1);
+    screenPixels[screenRow].push(pixelLit ? "#" : ".");
+
     if (instructions[0] === "noop") {
-      // console.log(
-      //   "cycle",
-      //   cycles,
-      //   `(register value ${currentRegisterValue} unchanged - noop)`
-      // );
       instructions.shift();
       continue;
     }
 
     if (nextValue) {
-      // console.log(
-      //   "cycle",
-      //   cycles,
-      //   `${currentRegisterValue} => ${currentRegisterValue + nextValue}`
-      // );
       currentRegisterValue = currentRegisterValue + nextValue;
       nextValue = undefined;
       instructions.shift();
@@ -41,31 +47,31 @@ function listenToSignalStrength(rawData: string) {
     if (instructions.length) {
       const newValue = parseInt(instructions[0].split(" ")[1], 10);
       nextValue = newValue;
-      // console.log(
-      //   "cycle",
-      //   cycles,
-      //   `(register value ${currentRegisterValue} unchanged, but nextValue has been set to ${nextValue})`
-      // );
     }
   }
 
-  console.log(cycles, "cycles,", "register value", currentRegisterValue);
-
-  return signalStrenghs;
+  return {
+    signalStrenghs,
+    screenPixels,
+  };
 }
 
 (async () => {
   const rawData = await parseRawData(__dirname, "input.txt");
 
-  const signalStrenghs = listenToSignalStrength(rawData);
+  const { signalStrenghs, screenPixels } = listenToSignalStrength(rawData);
 
   // Test answer: 13140
+  // Real answer: 12460
   const part1Answer = signalStrenghs.reduce(
     (total, strength) => (total += strength),
     0
   );
   console.log("Part 1 Answer:", part1Answer);
 
-  const part2Answer = "todo";
+  screenPixels.forEach((line) => {
+    console.log(line.join(""));
+  }); // Reads as "EZFPRAKL" - pasting into google docs and reducing line height spacing to 0.5 helps!
+  const part2Answer = "EZFPRAKL";
   console.log("Part 2 Answer:", part2Answer);
 })();

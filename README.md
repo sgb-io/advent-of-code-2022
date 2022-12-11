@@ -35,4 +35,5 @@ Day 8 - A bit tricky with having to invert the direction with 2 axis. Pleased wi
 
 Day 9 - Hard one. Part 1 was OK but I struggled with part 2. Outputting the visual output was kinda useful. IIRC the movement algo had to change to allow for 2x2 moves. It was difficult keeping track of everything, since every move meant 10 * `number in move` simulations in a chain, plus start cases.
 
-Day 10 - TODO...
+Day 10 - Part 1 was fun and quite easy. At first I was just looping the instructions but soon realised I had to introduce extra cycles to account for how the register works. Part 2 wasn't too hard, although I did have an off-by-one error (AGAIN!) that was messing up my test output. Luckily it didn't take too long to fix. This was probably my favourite one so far!
+
