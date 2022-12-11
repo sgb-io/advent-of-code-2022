@@ -70,6 +70,11 @@ function calculateRound(
 ): Monkey[] {
   const roundMonkeys = [...monkeys]; // Mutable version of the monkeys
 
+  const moduloResult = roundMonkeys.reduce(
+    (prod: number, monkey: Monkey): number => prod * monkey.testDivisibleBy,
+    1
+  );
+
   for (let i = 0; i < roundMonkeys.length; i += 1) {
     const currentMonkey = roundMonkeys[i];
 
@@ -87,12 +92,8 @@ function calculateRound(
           : currentItem + monkeyOperand;
       const reducedItemWorry = reduceWorryLevels
         ? Math.floor(itemWorry / 3)
-        : itemWorry;
+        : itemWorry % moduloResult;
 
-      // TODO the problem is that we're reaching Infinity
-      if (reducedItemWorry > 1_000_000) {
-        console.log(reducedItemWorry);
-      }
       const passesTest = reducedItemWorry % currentMonkey.testDivisibleBy === 0;
       const throwTarget = passesTest
         ? currentMonkey.testPassTarget
@@ -125,9 +126,9 @@ function calculateRound(
   return roundMonkeys;
 }
 
-const ROUNDS_TO_PRINT = [
-  0, 19, 999, 1999, 2999, 3999, 4999, 5999, 6999, 7999, 8999, 9999,
-];
+// const ROUNDS_TO_PRINT = [
+//   0, 19, 999, 1999, 2999, 3999, 4999, 5999, 6999, 7999, 8999, 9999,
+// ];
 
 function calculateMonkeyBusiness(
   numRounds: number,
@@ -135,18 +136,18 @@ function calculateMonkeyBusiness(
   reduceWorryLevels: boolean
 ): number {
   // Increment how many items each monkey inspected over 20 rounds
-  let roundMonkeys = monkeys;
+  let roundMonkeys = [...monkeys];
   for (let i = 0; i < numRounds; i += 1) {
     const roundOutcome = calculateRound(roundMonkeys, reduceWorryLevels);
-    if (ROUNDS_TO_PRINT.includes(i)) {
-      console.log(`
-    == After round ${i + 1} ==
-    Monkey 0 inspected items ${roundOutcome[0].inspectionCount} times.
-    Monkey 1 inspected items ${roundOutcome[1].inspectionCount} times.
-    Monkey 2 inspected items ${roundOutcome[2].inspectionCount} times.
-    Monkey 3 inspected items ${roundOutcome[3].inspectionCount} times.
-    `);
-    }
+    // if (ROUNDS_TO_PRINT.includes(i)) {
+    //   console.log(`
+    // == After round ${i + 1} ==
+    // Monkey 0 inspected items ${roundOutcome[0].inspectionCount} times.
+    // Monkey 1 inspected items ${roundOutcome[1].inspectionCount} times.
+    // Monkey 2 inspected items ${roundOutcome[2].inspectionCount} times.
+    // Monkey 3 inspected items ${roundOutcome[3].inspectionCount} times.
+    // `);
+    // }
     roundMonkeys = roundOutcome;
   }
 
@@ -171,17 +172,21 @@ function calculateMonkeyBusiness(
 }
 
 (async () => {
-  const rawData = await parseRawData(__dirname, "test.txt");
+  const rawData = await parseRawData(__dirname, "input.txt");
+
+  // calculateRound is currently mutating monkeys in a deep way, hence doing this
+  // Can't be bothered to fix it right now :-)
+  const monkeys1 = [...parseMonkeys(rawData)];
+  const monkeys2 = [...parseMonkeys(rawData)];
 
   // Test answer: 10605
   // Real answer: 113232
-  // const monkeys = parseMonkeys(rawData);
-  // const part1Answer = calculateMonkeyBusiness(20, monkeys, false);
-  // console.log("Part 1 Answer:", part1Answer);
+  const part1Answer = calculateMonkeyBusiness(20, monkeys1, true);
+  console.log("Part 1 Answer:", part1Answer);
 
   // Test answer: 2713310158
-  // Real answer:
-  const monkeys = parseMonkeys(rawData);
-  const part2Answer = calculateMonkeyBusiness(10_000, monkeys, false);
+  // Real answer: 2500000000
+
+  const part2Answer = calculateMonkeyBusiness(10_000, monkeys2, false);
   console.log("Part 2 Answer:", part2Answer);
 })();
