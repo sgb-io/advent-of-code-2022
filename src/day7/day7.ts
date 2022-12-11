@@ -1,5 +1,4 @@
-import { resolve } from "path";
-import { promises as fs } from "fs";
+import { parseRawData } from "../utils/parseRawData";
 
 // Build a simple tree structure of the file system
 // Calculate the sizes of all directories, regardless of nesting
@@ -205,7 +204,6 @@ function parseRawCommands(rawCommands: string): Dir {
         createDirDfs(rootDir, [...currentPath], path);
         currentDir = getDirDfs(currentDir, [...currentPath], path);
 
-        // TODO should end up with 3: a, d, e (ingoring the root)
         allRelevantPaths.push({
           currentPath: [...currentPath],
           dirName: currentDir.name,
@@ -290,7 +288,6 @@ function calculateDirectorySizes(rootDir: Dir, allRelevantPaths: Path[]) {
   const pathStrings = new Set();
   allRelevantPaths.forEach((p) => {
     const asString = p.currentPath.join("-");
-    console.log(asString);
     pathStrings.add(asString);
   });
 
@@ -298,13 +295,8 @@ function calculateDirectorySizes(rootDir: Dir, allRelevantPaths: Path[]) {
 }
 
 (async () => {
-  const rawCommands = await fs.readFile(
-    resolve(__dirname, "./computerCommands.txt"),
-    {
-      encoding: "utf-8",
-    }
-  );
-  const directoryStructure = parseRawCommands(rawCommands);
+  const rawData = await parseRawData(__dirname, "input.txt");
+  const directoryStructure = parseRawCommands(rawData);
 
   const directorySizes = calculateDirectorySizes(
     directoryStructure,
@@ -316,7 +308,6 @@ function calculateDirectorySizes(rootDir: Dir, allRelevantPaths: Path[]) {
   }, 0);
 
   // Should be 95437 using the test
-  // 1034488 is incorrect for the real data
   // Real answer should be 1427048
   const part1Answer = total;
   console.log("Part 1 Answer:", part1Answer);

@@ -1,5 +1,4 @@
-import { resolve } from "path";
-import { promises as fs } from "fs";
+import { parseRawData } from "../utils/parseRawData";
 
 function findFirstPacket(
   commsSignal: string,
@@ -31,16 +30,11 @@ function findFirstPacket(
 }
 
 (async () => {
-  const rawCommsSignal = await fs.readFile(
-    resolve(__dirname, "./communicationSignal.txt"),
-    {
-      encoding: "utf-8",
-    }
-  );
+  const rawData = await parseRawData(__dirname, "input.txt");
 
-  const part1Answer = findFirstPacket(rawCommsSignal, 4);
+  const part1Answer = findFirstPacket(rawData, 4);
   console.log("Part 1 Answer:", part1Answer);
 
-  const part2Answer = findFirstPacket(rawCommsSignal, 14);
+  const part2Answer = findFirstPacket(rawData, 14);
   console.log("Part 2 Answer:", part2Answer);
 })();

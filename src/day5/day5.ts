@@ -1,5 +1,4 @@
-import { resolve } from "path";
-import { promises as fs } from "fs";
+import { parseRawData } from "../utils/parseRawData";
 
 type RowValue = string | undefined;
 type ColValue = string | undefined;
@@ -135,11 +134,9 @@ function rearrangeStacks(
 }
 
 (async () => {
-  const rawStacks = await fs.readFile(resolve(__dirname, "./stacks.txt"), {
-    encoding: "utf-8",
-  });
-  const startingStacks = parseStartingStacks(rawStacks);
-  const instructions = parseInstructions(rawStacks);
+  const rawData = await parseRawData(__dirname, "input.txt");
+  const startingStacks = parseStartingStacks(rawData);
+  const instructions = parseInstructions(rawData);
 
   const part1Answer = rearrangeStacks(startingStacks, instructions, false);
   console.log("Part 1 Answer:", part1Answer);

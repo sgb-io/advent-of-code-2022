@@ -1,5 +1,4 @@
-import { resolve } from "path";
-import { promises as fs } from "fs";
+import { parseRawData } from "../utils/parseRawData";
 
 function getCleanupPairs(input: string): string[][] {
   const lines = input.split("\n").filter((line) => line !== "");
@@ -92,10 +91,8 @@ function countPartiallyOverlappingPairs(pairs: string[][]): number {
 }
 
 (async () => {
-  const cleanupMap = await fs.readFile(resolve(__dirname, "./cleanup.txt"), {
-    encoding: "utf-8",
-  });
-  const pairs = getCleanupPairs(cleanupMap);
+  const rawData = await parseRawData(__dirname, "input.txt");
+  const pairs = getCleanupPairs(rawData);
 
   const part1Answer = countFullyOverlappingPairs(pairs);
   console.log("Part 1 Answer:", part1Answer);

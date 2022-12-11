@@ -1,5 +1,4 @@
-import { resolve } from "path";
-import { promises as fs } from "fs";
+import { parseRawData } from "../utils/parseRawData";
 
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
@@ -107,10 +106,8 @@ function scoreAllGroups(rucksackItemsByGroup: string[][]): number {
 }
 
 (async () => {
-  const rucksacks = await fs.readFile(resolve(__dirname, "./rucksacks.txt"), {
-    encoding: "utf-8",
-  });
-  const rucksackItems = getRucksackItems(rucksacks);
+  const rawData = await parseRawData(__dirname, "input.txt");
+  const rucksackItems = getRucksackItems(rawData);
 
   const part1Answer = getRuckItemDupesScore(rucksackItems);
   console.log("Part 1 Answer:", part1Answer);

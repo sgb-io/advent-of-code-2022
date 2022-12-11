@@ -1,5 +1,4 @@
-import { resolve } from "path";
-import { promises as fs } from "fs";
+import { parseRawData } from "../utils/parseRawData";
 
 function parseTrees(rawTrees: string): number[][] {
   const lines = rawTrees.split("\n");
@@ -218,11 +217,8 @@ function countTrees(parsed: number[][]): {
 }
 
 (async () => {
-  const rawTrees = await fs.readFile(resolve(__dirname, "./trees.txt"), {
-    encoding: "utf-8",
-  });
-
-  const parsed = parseTrees(rawTrees);
+  const rawData = await parseRawData(__dirname, "input.txt");
+  const parsed = parseTrees(rawData);
   const { part1, part2 } = countTrees(parsed);
 
   // Part 1 test answer: 21

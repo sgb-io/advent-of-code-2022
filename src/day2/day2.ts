@@ -1,5 +1,4 @@
-import { resolve } from "path";
-import { promises as fs } from "fs";
+import { parseRawData } from "../utils/parseRawData";
 
 enum OppositionShapes {
   ROCK = "A",
@@ -128,19 +127,14 @@ function calculateDecryptedStrategyGuideScore(
 }
 
 (async () => {
-  const strategyGuide = await fs.readFile(
-    resolve(__dirname, "./strategyGuide.txt"),
-    {
-      encoding: "utf-8",
-    }
-  );
-  const instructions = parseStrategyGuide<Instruction>(strategyGuide);
+  const rawData = await parseRawData(__dirname, "input.txt");
+  const instructions = parseStrategyGuide<Instruction>(rawData);
 
   const part1Answer = calculateStrategyGuideScore(instructions);
   console.log("Part 1 Answer:", part1Answer);
 
   const encryptedInstructions =
-    parseStrategyGuide<EncryptedInstruction>(strategyGuide);
+    parseStrategyGuide<EncryptedInstruction>(rawData);
   const part2Answer = calculateDecryptedStrategyGuideScore(
     encryptedInstructions
   );

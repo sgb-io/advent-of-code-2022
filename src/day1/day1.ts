@@ -1,5 +1,4 @@
-import { resolve } from "path";
-import { promises as fs } from "fs";
+import { parseRawData } from "../utils/parseRawData";
 
 const getElfCalorieParts = (inventory: string): number[][] => {
   // Split into elves (double linebreak)
@@ -58,10 +57,8 @@ const topThreeCalories = (elfCalorieParts: number[][]): number => {
 };
 
 (async () => {
-  const inventory = await fs.readFile(resolve(__dirname, "./inventory.txt"), {
-    encoding: "utf-8",
-  });
-  const elfCalorieParts = getElfCalorieParts(inventory);
+  const rawData = await parseRawData(__dirname, "input.txt");
+  const elfCalorieParts = getElfCalorieParts(rawData);
 
   const part1Answer = maxCalories(elfCalorieParts);
   console.log("Part 1 Answer:", part1Answer);

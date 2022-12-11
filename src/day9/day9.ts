@@ -1,5 +1,4 @@
-import { resolve } from "path";
-import { promises as fs } from "fs";
+import { parseRawData } from "../utils/parseRawData";
 
 // Assume that T, H and s are all the same at the start
 
@@ -160,11 +159,8 @@ function simulateMotion(rawRopes: string) {
 }
 
 (async () => {
-  const rawRopes = await fs.readFile(resolve(__dirname, "./ropes.txt"), {
-    encoding: "utf-8",
-  });
-
-  const positionsVisited = simulateMotion(rawRopes);
+  const rawData = await parseRawData(__dirname, "input.txt");
+  const positionsVisited = simulateMotion(rawData);
 
   // Part 1 test answer: 13
   // Part 1 real answer: 6271
