@@ -108,7 +108,6 @@ function calculateShortestPath(rawData: string) {
   }
 
   // Convert into a simpler data structure for djikstra
-
   const startNodeIndex = decoratedGraph.findIndex((n) => n.type === "start");
   const startNode = decoratedGraph[startNodeIndex];
   const endNodeIndex = decoratedGraph.findIndex((n) => n.type === "end");
@@ -137,15 +136,11 @@ function calculateShortestPath(rawData: string) {
     {}
   );
 
-  // console.log(traversibleGraph);
-
   const shortestPath = dijkstra.find_path(
     traversibleGraph,
     startNode.positionKey,
     endNode.positionKey
   );
-
-  // console.log(shortestPath, shortestPath.length);
 
   // Draw the grid
   for (let i = 0; i < rowLength; i += 1) {
@@ -162,20 +157,53 @@ function calculateShortestPath(rawData: string) {
 
   // Note: it seems there are 2 similar valid routes for the test data
 
-  return shortestPath.length - 1;
+  // Part 2: calculate the shortest path from all starting points that are at elevation A
+  const startingPositionKeys = decoratedGraph.reduce(
+    (startingKeys: string[], node) => {
+      if (node.value === 0 && node.type === "node") {
+        startingKeys.push(node.positionKey);
+      }
+      return startingKeys;
+    },
+    []
+  );
+  const part2ShortestPaths: string[][] = [];
+  startingPositionKeys.forEach((startingPosKey) => {
+    try {
+      const shortestPath = dijkstra.find_path(
+        traversibleGraph,
+        startingPosKey,
+        endNode.positionKey
+      );
+      part2ShortestPaths.push(shortestPath);
+    } catch (e) {
+      // Do nothing - it's expected that some `a` locations will not have a path to `E`
+    }
+  });
+  const part2 =
+    part2ShortestPaths.reduce((lowest, path) => {
+      if (path.length < lowest) {
+        lowest = path.length;
+      }
+      return lowest;
+    }, Number.POSITIVE_INFINITY) - 1;
+
+  return {
+    part1: shortestPath.length - 1,
+    part2,
+  };
 }
 
 (async () => {
   const rawData = await parseRawData(__dirname, "input.txt");
 
+  const { part1, part2 } = calculateShortestPath(rawData);
+
   // Test answer: 31
   // Real answer: 383
-  const part1Answer = calculateShortestPath(rawData);
-  console.log("Part 1 Answer:", part1Answer);
+  console.log("Part 1 Answer:", part1);
 
-  // Test answer:
-  // Real answer:
-
-  const part2Answer = "todo";
-  console.log("Part 2 Answer:", part2Answer);
+  // Test answer: 29
+  // Real answer: 377
+  console.log("Part 2 Answer:", part2);
 })();
