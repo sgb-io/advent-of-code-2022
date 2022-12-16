@@ -1,57 +1,41 @@
 import { parseRawData } from "../utils/parseRawData";
 
-// If the left integer is lower than the right integer, the inputs are in the right order.
-// If the left integer is higher than the right integer, the inputs are not in the right order.
+type PacketValue = number | Packet;
 
-// If the left list runs out of items first, the inputs are in the right order.
-// If the right list runs out of items first, the inputs are not in the right order.
+type Packet = Array<PacketValue>;
 
-function packetPairIsInCorrectOrder(left: any[], right: any[]): boolean {
-  // if (left.length && right.length === 0) {
-  //   return false;
-  // }
+function itemsAreBothNumbers(left: any, right: any): boolean {
+  return typeof left === "number" && typeof right === "number";
+}
 
-  // if (right.length < left.length) {
-  //   console.log("THIS CASE.");
-  //   return false;
-  //   // return false;
-  // }
+const convertToPacket = (value: PacketValue) =>
+  typeof value === "number" ? [value] : value;
 
-  for (let i = 0; i < left.length; i += 1) {
-    const leftItem = left[i];
-    const rightItem = right[i];
+function packetPairIsInCorrectOrder(
+  left: any[],
+  right: any[]
+): boolean | undefined {
+  for (const [index, leftValue] of left.entries()) {
+    const rightValue = right[index];
+    if (rightValue === undefined) return false;
 
-    const leftIsArray = Array.isArray(leftItem);
-    const rightIsArray = Array.isArray(rightItem);
-
-    if (typeof rightItem === "undefined") {
-      return false;
+    if (itemsAreBothNumbers(leftValue, rightValue)) {
+      if (leftValue === rightValue) continue;
+      return leftValue < rightValue;
     }
 
-    if (typeof leftItem === "number" && typeof rightItem === "number") {
-      if (leftItem === rightItem) {
-        continue;
-      }
+    const isCorrectOrder = packetPairIsInCorrectOrder(
+      convertToPacket(leftValue),
+      convertToPacket(rightValue)
+    );
 
-      if (leftItem > rightItem) {
-        return false;
-      }
-
-      // Pretty certain this case is correct
-      if (leftItem < rightItem) {
-        console.log("calculated as correct order", leftItem, rightItem);
-        return true;
-      }
+    if (isCorrectOrder !== undefined) {
+      return isCorrectOrder;
     }
-
-    let leftItemToLoop = leftIsArray ? leftItem : [leftItem];
-    let rightItemToLoop = rightIsArray ? rightItem : [rightItem];
-
-    return packetPairIsInCorrectOrder(leftItemToLoop, rightItemToLoop);
   }
 
-  console.log("defaulting to correct order", left, right);
-  return true;
+  // If the left packet ran out of values, return true, otherwise no order was found
+  return left.length < right.length ? true : undefined;
 }
 
 // Can't accurately type the pairs, since we eval them, and don't know how deep the arrays go.
@@ -59,19 +43,21 @@ function countCorrectOrder(processedPacketPairs: any[]): Map<number, boolean> {
   const results = new Map<number, boolean>();
   processedPacketPairs.forEach(([left, right], pairIndex) => {
     const pairNumber = pairIndex + 1;
-    if (packetPairIsInCorrectOrder(left, right)) {
+    // console.log(`== Pair ${pairNumber} ==`);
+    const inOrder = packetPairIsInCorrectOrder(left, right);
+    if (inOrder !== false) {
+      // console.log(`Pair ${pairNumber} was in order`);
       results.set(pairNumber, true);
+    } else {
+      // console.log(`Pair ${pairNumber} was NOT IN order`);
     }
+    // console.log("\n\n");
   });
 
   return results;
 }
 
-function countHealthyPackets(rawData: string) {
-  const packetPairs = rawData
-    .split("\n\n")
-    .map((rawPair: string) => rawPair.split("\n"));
-
+function countHealthyPackets(packetPairs: string[][]) {
   const processedPacketPairs: number[][][] = [];
   packetPairs.forEach((pair) => {
     const convertedPackets: number[][] = [];
@@ -84,24 +70,63 @@ function countHealthyPackets(rawData: string) {
   const result = countCorrectOrder(processedPacketPairs);
   const indices = Array.from(result.keys());
 
-  console.log(indices);
-
   return indices.reduce((total, index) => {
     total += index;
     return total;
   }, 0);
 }
 
+function reorderPackets(packetPairs: string[][]) {
+  const flatPairs: any[] = packetPairs.reduce((flat, [left, right]) => {
+    flat.push(eval(left));
+    flat.push(eval(right));
+    return flat;
+  }, []);
+
+  flatPairs.push([[2]]);
+  flatPairs.push([[6]]);
+
+  const sorted = flatPairs.sort((a, b) => {
+    if (packetPairIsInCorrectOrder(a, b)) {
+      return -1;
+    }
+
+    return 1;
+  });
+
+  const relevantIndeces = [];
+  for (let i = 0; i < sorted.length; i += 1) {
+    const pairIndex = i + 1;
+    if (Array.isArray(sorted[i]) && Array.isArray(sorted[i][0])) {
+      if (
+        (sorted[i][0].length === 1 && sorted[i][0][0] === 2) ||
+        (sorted[i][0].length === 1 && sorted[i][0][0] === 6)
+      ) {
+        relevantIndeces.push(pairIndex);
+      }
+    }
+  }
+
+  return relevantIndeces.reduce((total, index) => {
+    total = total * index;
+    return total;
+  }, 1);
+}
+
 (async () => {
   const rawData = await parseRawData(__dirname, "input.txt");
 
-  const part1Answer = countHealthyPackets(rawData);
+  const packetPairs = rawData
+    .split("\n\n")
+    .map((rawPair: string) => rawPair.split("\n"));
+  const part1Answer = countHealthyPackets(packetPairs);
 
   // Test answer: 13
   // Real answer: 5905
   console.log("Part 1 Answer:", part1Answer);
 
-  // Test answer:
-  // Real answer:
-  // console.log("Part 2 Answer:", part2);
+  // Test answer: 140
+  // Real answer: 21691
+  const part2Answer = reorderPackets(packetPairs);
+  console.log("Part 2 Answer:", part2Answer);
 })();
