@@ -16,7 +16,8 @@
     "day10": "ts-node src/day10/day10.ts",
     "day11": "ts-node src/day11/day11.ts",
     "day12": "ts-node src/day12/day12.ts",
-    "day13": "ts-node src/day13/day13.ts"
+    "day13": "ts-node src/day13/day13.ts",
+    "day14": "ts-node src/day14/day14.ts"
   },
   "dependencies": {
     "@types/lodash": "^4.14.191",
