@@ -74,20 +74,15 @@ function calculateNextSandPosition(
   rocks: CoordinatesSet,
   settledSand: CoordinatesSet
 ): NextPositionStep {
-  // Starts at 500,0
   let sandPosition = [500, 0];
   let moving = true;
   const bottomBoundary = getBottomBoundaryOfRocks(rocks);
-
-  // console.log(rocks, bottomBoundary);
 
   while (moving) {
     const [col, row] = sandPosition;
     const { downIsAvailable, downLeftIsAvailable, downRightIsAvailable } =
       sandCanMove(sandPosition, rocks, settledSand);
-    console.log(
-      `At position ${sandPosition}: ${downIsAvailable}, ${downLeftIsAvailable}, ${downRightIsAvailable}`
-    );
+
     if (!downIsAvailable && !downLeftIsAvailable && !downRightIsAvailable) {
       moving = false;
       return {
@@ -107,33 +102,26 @@ function calculateNextSandPosition(
 
     if (downIsAvailable) {
       sandPosition = [col, row + 1];
-      console.log("adjutsing pos down 1", sandPosition);
-      // moving = false;
       continue;
     }
 
     if (!downIsAvailable && downLeftIsAvailable) {
       sandPosition = [col - 1, row + 1];
-      // moving = false;
       continue;
     }
 
     if (!downIsAvailable && !downLeftIsAvailable && downRightIsAvailable) {
       sandPosition = [col + 1, row + 1];
-      // moving = false;
       continue;
     }
 
     console.log("got here - y");
   }
 
-  // return sandPosition;
   return {
     action: "move",
     sandPosition,
   };
-
-  // return undefined if abyss
 }
 
 function simulateSand(rocks: CoordinatesSet): number {
@@ -143,27 +131,24 @@ function simulateSand(rocks: CoordinatesSet): number {
 
   let pathwaysFilled = false;
 
-  const a = calculateNextSandPosition(rocks, settledSand);
-  const b = calculateNextSandPosition(rocks, settledSand);
-  console.log("TODO do stuff with settled sand", a, b);
+  while (pathwaysFilled === false) {
+    // if the next sand co-ordinate is vertically below the lowest rocks, assume abyss reached
+    const { action, sandPosition } = calculateNextSandPosition(
+      rocks,
+      settledSand
+    );
 
-  // while (pathwaysFilled === false) {
-  //   // if the next sand co-ordinate is vertically below the lowest rocks, assume abyss reached
-  //   const { action, sandPosition } = calculateNextSandPosition(
-  //     rocks,
-  //     settledSand
-  //   );
+    if (action === "abyss") {
+      // console.log("Abyss detected - existing movement loop");
+      pathwaysFilled = true;
+      continue;
+    }
 
-  //   if (action === "abyss") {
-  //     console.log("Abyss detected - existing movement  loop");
-  //     pathwaysFilled = true;
-  //     continue;
-  //   }
-
-  //   if (action === "settle") {
-  //     settledSand.push(sandPosition);
-  //   }
-  // }
+    if (action === "settle") {
+      // console.log("A piece of sand settled..", sandPosition);
+      settledSand.push(sandPosition);
+    }
+  }
 
   return settledSand.length;
 }
@@ -244,9 +229,6 @@ function drawRocks(rockCoordinates: CoordinatesSet) {
     rockHits.add(`${col}-${row}`);
   }
 
-  const numCols = Math.abs(maxCol - minCol - 500);
-  const numRows = Math.abs(maxRow - minRow);
-
   console.log("  4     5  5");
   console.log("  9     0  0");
   console.log("  4     0  3");
@@ -265,22 +247,20 @@ function drawRocks(rockCoordinates: CoordinatesSet) {
 }
 
 (async () => {
-  const rawData = await parseRawData(__dirname, "test.txt");
+  const rawData = await parseRawData(__dirname, "input.txt");
 
   const lines = rawData
     .split("\n")
     .map((rawPair: string) => rawPair.split(" -> "));
   const rockCoordinates = calculateRockCoordinates(lines);
-  console.log("rockCoordinates", rockCoordinates);
 
   // Draw the rocks
   drawRocks(rockCoordinates);
 
-  // const part1Answer = simulateSand(rockCoordinates);
-  const part1Answer = "todo";
+  const part1Answer = simulateSand(rockCoordinates);
 
-  // Test answer: 13
-  // Real answer: 5905
+  // Test answer: 24
+  // Real answer: 961
   console.log("Part 1 Answer:", part1Answer);
 
   // Test answer:
