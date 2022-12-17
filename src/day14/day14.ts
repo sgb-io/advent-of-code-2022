@@ -315,7 +315,7 @@ function drawRocks(
   const rockCoordinates = calculateRockCoordinates(lines);
 
   // The floor should be theoretically infinity, but 85*2 is wide enough for the data
-  const rockCoordsWithFloor = addFloor(rockCoordinates, 0);
+  const rockCoordsWithFloor = addFloor(rockCoordinates, 250);
 
   // Draw the rocks
   drawRocks(rockCoordsWithFloor);
