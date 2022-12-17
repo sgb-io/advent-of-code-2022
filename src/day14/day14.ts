@@ -66,7 +66,7 @@ function getBottomBoundaryOfRocks(rocks: CoordinatesSet) {
 }
 
 interface NextPositionStep {
-  action: "settle" | "move" | "abyss";
+  action: "settle" | "move" | "abyss" | "blocked";
   sandPosition: Coordinates;
 }
 
@@ -82,6 +82,19 @@ function calculateNextSandPosition(
     const [col, row] = sandPosition;
     const { downIsAvailable, downLeftIsAvailable, downRightIsAvailable } =
       sandCanMove(sandPosition, rocks, settledSand);
+
+    if (
+      col === 500 &&
+      row === 0 &&
+      !downIsAvailable &&
+      !downRightIsAvailable &&
+      !downLeftIsAvailable
+    ) {
+      return {
+        action: "blocked",
+        sandPosition,
+      };
+    }
 
     if (!downIsAvailable && !downLeftIsAvailable && !downRightIsAvailable) {
       moving = false;
@@ -114,8 +127,6 @@ function calculateNextSandPosition(
       sandPosition = [col + 1, row + 1];
       continue;
     }
-
-    console.log("got here - y");
   }
 
   return {
@@ -124,7 +135,7 @@ function calculateNextSandPosition(
   };
 }
 
-function simulateSand(rocks: CoordinatesSet): number {
+function simulateSand(rocks: CoordinatesSet): CoordinatesSet {
   // Rocks are the boundaries
   // Sand falls from 500,0
   const settledSand: CoordinatesSet = [];
@@ -139,7 +150,14 @@ function simulateSand(rocks: CoordinatesSet): number {
     );
 
     if (action === "abyss") {
-      // console.log("Abyss detected - existing movement loop");
+      console.log("Abyss detected - exiting movement loop");
+      pathwaysFilled = true;
+      continue;
+    }
+
+    if (action === "blocked") {
+      console.log("Blockage detected - exiting movement loop");
+      settledSand.push([500, 0]);
       pathwaysFilled = true;
       continue;
     }
@@ -150,7 +168,7 @@ function simulateSand(rocks: CoordinatesSet): number {
     }
   }
 
-  return settledSand.length;
+  return settledSand;
 }
 
 function calculateRockCoordinates(lines: string[][]): CoordinatesSet {
@@ -201,7 +219,33 @@ function calculateRockCoordinates(lines: string[][]): CoordinatesSet {
   return coords;
 }
 
-function drawRocks(rockCoordinates: CoordinatesSet) {
+function addFloor(
+  rockCoordinates: CoordinatesSet,
+  fillSize: number
+): CoordinatesSet {
+  const mutatedCoords = [...rockCoordinates];
+  let highestRowNumber = 0;
+
+  for (let i = 0; i < mutatedCoords.length; i += 1) {
+    const [col, row] = mutatedCoords[i];
+    if (row > highestRowNumber) {
+      highestRowNumber = row;
+    }
+  }
+
+  highestRowNumber = highestRowNumber + 2;
+
+  const start = 500 - fillSize;
+  const end = 500 + fillSize;
+
+  for (let n = start; n < end; n += 1) {
+    mutatedCoords.push([n, highestRowNumber]);
+  }
+
+  return mutatedCoords;
+}
+
+function drawRocks(rockCoordinates: CoordinatesSet, showSand: boolean) {
   let minCol = 500;
   let maxCol = 500;
   let minRow = 0;
@@ -234,10 +278,12 @@ function drawRocks(rockCoordinates: CoordinatesSet) {
   console.log("  4     0  3");
 
   for (let i = minRow; i <= maxRow; i += 1) {
-    let line = `${i} `;
+    const rowNum = i < 10 ? `0${i}` : i;
+    let line = `${rowNum} `;
     for (let n = minCol; n <= maxCol; n += 1) {
       if (rockHits.has(`${n}-${i}`)) {
-        line += "#";
+        const symbol = showSand ? "o" : "#";
+        line += symbol;
       } else {
         line += ".";
       }
@@ -254,17 +300,22 @@ function drawRocks(rockCoordinates: CoordinatesSet) {
     .map((rawPair: string) => rawPair.split(" -> "));
   const rockCoordinates = calculateRockCoordinates(lines);
 
-  // Draw the rocks
-  drawRocks(rockCoordinates);
+  // The floor should be theoretically infinity, but 85*2 is wide enough for the data
+  const rockCoordsWithFloor = addFloor(rockCoordinates, 85);
 
-  const part1Answer = simulateSand(rockCoordinates);
+  // Draw the rocks
+  drawRocks(rockCoordsWithFloor, false);
 
   // Test answer: 24
   // Real answer: 961
-  console.log("Part 1 Answer:", part1Answer);
+  // const part1Answer = simulateSand(rockCoordinates);
+  // console.log("Part 1 Answer:", part1Answer);
 
-  // Test answer:
+  // Test answer: 93
+  // 3549 is incorrect
   // Real answer:
-  const part2Answer = "todo";
+  const simulated = simulateSand(rockCoordsWithFloor);
+  drawRocks(simulated, true);
+  const part2Answer = simulated.length;
   console.log("Part 2 Answer:", part2Answer);
 })();
