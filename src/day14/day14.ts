@@ -245,13 +245,17 @@ function addFloor(
   return mutatedCoords;
 }
 
-function drawRocks(rockCoordinates: CoordinatesSet, showSand: boolean) {
+function drawRocks(
+  rockCoordinates: CoordinatesSet,
+  sandCoordinates?: CoordinatesSet
+) {
   let minCol = 500;
   let maxCol = 500;
   let minRow = 0;
   let maxRow = 9;
 
   const rockHits = new Set<string>();
+  const sandHits = new Set<string>();
 
   for (let i = 0; i < rockCoordinates.length; i += 1) {
     const [col, row] = rockCoordinates[i];
@@ -273,6 +277,13 @@ function drawRocks(rockCoordinates: CoordinatesSet, showSand: boolean) {
     rockHits.add(`${col}-${row}`);
   }
 
+  if (sandCoordinates) {
+    for (let i = 0; i < sandCoordinates.length; i += 1) {
+      const [col, row] = sandCoordinates[i];
+      sandHits.add(`${col}-${row}`);
+    }
+  }
+
   console.log("  4     5  5");
   console.log("  9     0  0");
   console.log("  4     0  3");
@@ -282,11 +293,14 @@ function drawRocks(rockCoordinates: CoordinatesSet, showSand: boolean) {
     let line = `${rowNum} `;
     for (let n = minCol; n <= maxCol; n += 1) {
       if (rockHits.has(`${n}-${i}`)) {
-        const symbol = showSand ? "o" : "#";
-        line += symbol;
-      } else {
-        line += ".";
+        line += "#";
+        continue;
       }
+      if (sandHits.has(`${n}-${i}`)) {
+        line += "o";
+        continue;
+      }
+      line += ".";
     }
     console.log(line);
   }
@@ -301,10 +315,10 @@ function drawRocks(rockCoordinates: CoordinatesSet, showSand: boolean) {
   const rockCoordinates = calculateRockCoordinates(lines);
 
   // The floor should be theoretically infinity, but 85*2 is wide enough for the data
-  const rockCoordsWithFloor = addFloor(rockCoordinates, 85);
+  const rockCoordsWithFloor = addFloor(rockCoordinates, 0);
 
   // Draw the rocks
-  drawRocks(rockCoordsWithFloor, false);
+  drawRocks(rockCoordsWithFloor);
 
   // Test answer: 24
   // Real answer: 961
@@ -315,7 +329,7 @@ function drawRocks(rockCoordinates: CoordinatesSet, showSand: boolean) {
   // 3549 is incorrect
   // Real answer:
   const simulated = simulateSand(rockCoordsWithFloor);
-  drawRocks(simulated, true);
+  drawRocks(rockCoordsWithFloor, simulated);
   const part2Answer = simulated.length;
   console.log("Part 2 Answer:", part2Answer);
 })();
