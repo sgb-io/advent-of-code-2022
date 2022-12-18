@@ -1,27 +1,57 @@
+import { memoize } from "lodash";
 import { parseRawData } from "../utils/parseRawData";
 
 type Coordinates = number[];
 
 type CoordinatesSet = Coordinates[];
 
+// Other perf ideas: rocks are passed around, but they are very static
+
+// This is currently taking about 0.7ms per calculation - way too slow
+// function positionIsOccupied(
+//   position: Coordinates,
+//   rocks: CoordinatesSet,
+//   settledSand: CoordinatesSet
+// ): boolean {
+//   const positionStr = `${position[0]}-${position[1]}`;
+//   const rocksStr = rocks.map((r) => r.join("-"));
+//   if (rocksStr.includes(positionStr)) {
+//     return true;
+//   }
+
+//   const settledSandStr = settledSand.map((r) => r.join("-"));
+//   if (settledSandStr.includes(positionStr)) {
+//     return true;
+//   }
+
+//   return false;
+// }
 function positionIsOccupied(
   position: Coordinates,
   rocks: CoordinatesSet,
   settledSand: CoordinatesSet
 ): boolean {
   const positionStr = `${position[0]}-${position[1]}`;
-  const rocksStr = rocks.map((r) => r.join("-"));
-  if (rocksStr.includes(positionStr)) {
-    return true;
+
+  for (let i = 0; i < rocks.length; i += 1) {
+    if (rocks[i][0] === position[0] && rocks[i][1] === position[1]) {
+      return true;
+    }
   }
 
-  const settledSandStr = settledSand.map((r) => r.join("-"));
-  if (settledSandStr.includes(positionStr)) {
-    return true;
+  for (let n = 0; n < settledSand.length; n += 1) {
+    if (
+      settledSand[n][0] === position[0] &&
+      settledSand[n][1] === position[1]
+    ) {
+      return true;
+    }
   }
 
   return false;
 }
+
+const positionIsOccupiedMemo = memoize(positionIsOccupied);
 
 function getPotentialPositions(position: Coordinates) {
   const [col, row] = position;
@@ -32,19 +62,33 @@ function getPotentialPositions(position: Coordinates) {
   ];
 }
 
+const getPotentialPositionsMemo = memoize(getPotentialPositions);
+
 function sandCanMove(
   sandPosition: Coordinates,
   rocks: CoordinatesSet,
   settledSand: CoordinatesSet
 ) {
-  const [down, downLeft, downRight] = getPotentialPositions(sandPosition);
-  const downIsAvailable = !positionIsOccupied(down, rocks, settledSand);
-  const downLeftIsAvailable = !positionIsOccupied(downLeft, rocks, settledSand);
-  const downRightIsAvailable = !positionIsOccupied(
+  // console.time("getPotentialPositionsMemo");
+  const [down, downLeft, downRight] = getPotentialPositionsMemo(sandPosition);
+  // console.timeEnd("getPotentialPositionsMemo");
+  // console.time("downIsAvailable");
+  const downIsAvailable = !positionIsOccupiedMemo(down, rocks, settledSand);
+  // console.timeEnd("downIsAvailable");
+  // console.time("downLeftIsAvailable");
+  const downLeftIsAvailable = !positionIsOccupiedMemo(
+    downLeft,
+    rocks,
+    settledSand
+  );
+  // console.timeEnd("downLeftIsAvailable");
+  // console.time("downRightIsAvailable");
+  const downRightIsAvailable = !positionIsOccupiedMemo(
     downRight,
     rocks,
     settledSand
   );
+  // console.timeEnd("downRightIsAvailable");
 
   return {
     downIsAvailable,
@@ -52,6 +96,8 @@ function sandCanMove(
     downRightIsAvailable,
   };
 }
+
+const sandCanMoveMemo = memoize(sandCanMove);
 
 function getBottomBoundaryOfRocks(rocks: CoordinatesSet) {
   let highestVerticalDigit = 0;
@@ -65,23 +111,27 @@ function getBottomBoundaryOfRocks(rocks: CoordinatesSet) {
   return highestVerticalDigit;
 }
 
+const getBottomBoundaryOfRocksMemo = memoize(getBottomBoundaryOfRocks);
+
 interface NextPositionStep {
   action: "settle" | "move" | "abyss" | "blocked";
   sandPosition: Coordinates;
 }
 
+// Everything within calculateNextSandPosition() is slow
+// It is also increasing over time as settled sand grows
 function calculateNextSandPosition(
   rocks: CoordinatesSet,
   settledSand: CoordinatesSet
 ): NextPositionStep {
   let sandPosition = [500, 0];
   let moving = true;
-  const bottomBoundary = getBottomBoundaryOfRocks(rocks);
+  const bottomBoundary = getBottomBoundaryOfRocksMemo(rocks);
 
   while (moving) {
     const [col, row] = sandPosition;
     const { downIsAvailable, downLeftIsAvailable, downRightIsAvailable } =
-      sandCanMove(sandPosition, rocks, settledSand);
+      sandCanMoveMemo(sandPosition, rocks, settledSand);
 
     if (
       col === 500 &&
@@ -168,6 +218,8 @@ function simulateSand(rocks: CoordinatesSet): CoordinatesSet {
     }
   }
 
+  console.timeEnd("simulateSand");
+
   return settledSand;
 }
 
@@ -221,13 +273,14 @@ function calculateRockCoordinates(lines: string[][]): CoordinatesSet {
 
 function addFloor(
   rockCoordinates: CoordinatesSet,
-  fillSize: number
+  start: number,
+  end: number
 ): CoordinatesSet {
   const mutatedCoords = [...rockCoordinates];
   let highestRowNumber = 0;
 
   for (let i = 0; i < mutatedCoords.length; i += 1) {
-    const [col, row] = mutatedCoords[i];
+    const [_col, row] = mutatedCoords[i];
     if (row > highestRowNumber) {
       highestRowNumber = row;
     }
@@ -235,10 +288,12 @@ function addFloor(
 
   highestRowNumber = highestRowNumber + 2;
 
-  const start = 500 - fillSize;
-  const end = 500 + fillSize;
+  // Adding a static amount to the right-most rock doesn't seem to work
+  // The number of rows below that could be huge and it could diaganolly down the whole way
+  const startToUse = start - 500;
+  const endToUse = end + 500;
 
-  for (let n = start; n < end; n += 1) {
+  for (let n = startToUse; n < endToUse; n += 1) {
     mutatedCoords.push([n, highestRowNumber]);
   }
 
@@ -306,6 +361,22 @@ function drawRocks(
   }
 }
 
+function calculateHorizontalLimits(rockCoordinates: CoordinatesSet) {
+  let minLeft = 500;
+  let maxRight = 500;
+  for (let i = 0; i < rockCoordinates.length; i += 1) {
+    const [col, row] = rockCoordinates[i];
+    if (col < minLeft) {
+      minLeft = col;
+    }
+    if (col > maxRight) {
+      maxRight = col;
+    }
+  }
+
+  return [minLeft, maxRight];
+}
+
 (async () => {
   const rawData = await parseRawData(__dirname, "input.txt");
 
@@ -315,15 +386,16 @@ function drawRocks(
   const rockCoordinates = calculateRockCoordinates(lines);
 
   // The floor should be theoretically infinity, but 85*2 is wide enough for the data
-  const rockCoordsWithFloor = addFloor(rockCoordinates, 250);
+  const [minLeft, maxRight] = calculateHorizontalLimits(rockCoordinates);
+  const rockCoordsWithFloor = addFloor(rockCoordinates, minLeft, maxRight);
 
   // Draw the rocks
   drawRocks(rockCoordsWithFloor);
 
   // Test answer: 24
   // Real answer: 961
-  // const part1Answer = simulateSand(rockCoordinates);
-  // console.log("Part 1 Answer:", part1Answer);
+  const part1Answer = simulateSand(rockCoordinates);
+  console.log("Part 1 Answer:", part1Answer.length);
 
   // Test answer: 93
   // 3549 is incorrect
