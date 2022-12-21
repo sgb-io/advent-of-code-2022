@@ -1,5 +1,7 @@
 import { parseRawData } from "../utils/parseRawData";
 
+const PAD_PRINTING = 5;
+
 function parseCoordinates(section: string) {
   try {
     const x = parseInt(section.match(/x=-?\d+/)![0].replace("x=", ""), 10);
@@ -42,6 +44,10 @@ function getWidth(knownBeacons: number[][]) {
     }
   }
 
+  // Add some on to account for displaying scans
+  minX = minX - PAD_PRINTING;
+  maxX = maxX + PAD_PRINTING;
+
   return { minX, maxX };
 }
 
@@ -65,7 +71,7 @@ function isSensor(sensorPositions: number[][], x: number, y: number): boolean {
   return false;
 }
 
-function getScannedCoords(rowNum: number, posX: number): number[] {
+function getScannedLinePositions(rowNum: number, posX: number): number[] {
   // 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, reverse
   if (rowNum === 0) {
     return [posX, posX];
@@ -76,26 +82,32 @@ function getScannedCoords(rowNum: number, posX: number): number[] {
   }
 
   if (rowNum > 9) {
-    const adjusted = 10 - rowNum;
+    const adjusted = 18 - rowNum;
     return [posX - adjusted, posX + adjusted];
   }
 
   throw new Error("Unexpected case");
 }
 
-function isEmpty(sensorPositions: number[][], x: number, y: number) {
-  const relevantSensorPositions = sensorPositions.filter((position) => {
-    const [, posY] = position;
-    if (posY < y) {
-      return posY >= y - 25;
-    }
+function getScannedPositions(
+  useNearbySensorsOnly: boolean,
+  sensorPositions: number[][],
+  interestingRow: number
+) {
+  const relevantSensorPositions = useNearbySensorsOnly
+    ? sensorPositions.filter((position) => {
+        const [, posY] = position;
+        if (posY < interestingRow) {
+          return posY >= interestingRow - 25;
+        }
 
-    if (posY > y) {
-      return posY <= y + 25;
-    }
+        if (posY > interestingRow) {
+          return posY <= interestingRow + 25;
+        }
 
-    return true;
-  });
+        return true;
+      })
+    : sensorPositions;
 
   const allScannedPositions: number[][] = [];
 
@@ -104,26 +116,42 @@ function isEmpty(sensorPositions: number[][], x: number, y: number) {
     // 1 on row 0, 19 on row 9, 1 on row 20
     const [posX, posY] = relevantSensorPositions[i];
 
-    const startY = posY - 10;
-    const endY = posY + 10;
-    const startX = posX - 10;
-    const endX = posX + 10;
+    const startY = posY - 9;
+    const endY = posY + 9;
+    // const startX = posX - 10;
+    // const endX = posX + 10;
 
     let rowNum = 0;
 
+    // console.log(`Sensor ${i} has posX ${posX} and posY ${posY}`);
+
     // For every sensor, we need to loop 20 rows and 19 cols...
-    for (let scannedY = startY; scannedY < endY; scannedY += 1) {
+    for (let scannedY = startY; scannedY <= endY; scannedY += 1) {
       // allScannedPositions.push([scannedX, scannedY]);
-      const [rowStart, rowEnd] = getScannedCoords(rowNum, posX);
-      for (let j = rowStart; j < rowEnd; j += 1) {
+      const [rowStart, rowEnd] = getScannedLinePositions(rowNum, posX);
+      if (scannedY === 10) {
+        console.log(
+          `For rowNum ${rowNum}, at Y pos ${scannedY}, we're doing ${rowStart} to ${rowEnd}`
+        );
+      }
+      for (let j = rowStart; j <= rowEnd; j += 1) {
+        // console.log(`Adding X ${j}, Y ${scannedY}`);
         allScannedPositions.push([j, scannedY]);
       }
       rowNum += 1;
     }
   }
 
-  for (let y = 0; y < allScannedPositions.length; y += 1) {
-    const [posX, posY] = allScannedPositions[y];
+  return allScannedPositions;
+}
+
+function positionIsScanned(
+  allScannedPositions: number[][],
+  x: number,
+  y: number
+) {
+  for (let i = 0; i < allScannedPositions.length; i += 1) {
+    const [posX, posY] = allScannedPositions[i];
     if (posX === x && posY === y) {
       return true;
     }
@@ -132,20 +160,58 @@ function isEmpty(sensorPositions: number[][], x: number, y: number) {
   return false;
 }
 
+function getFullMinimumY(allPositions: number[][]) {
+  let minY = 0;
+  for (let i = 0; i < allPositions.length; i += 1) {
+    const [_x, y] = allPositions[i];
+    if (y < minY) {
+      minY = y;
+    }
+  }
+
+  // Add some on to account for displaying scans
+  minY = minY - PAD_PRINTING;
+
+  return minY;
+}
+
+function getFullMaximumY(allPositions: number[][]) {
+  let maxY = 0;
+  for (let i = 0; i < allPositions.length; i += 1) {
+    const [_x, y] = allPositions[i];
+    if (y > maxY) {
+      maxY = y;
+    }
+  }
+
+  // Add some on to account for displaying scans
+  maxY = maxY + PAD_PRINTING;
+
+  return maxY;
+}
+
 function drawBeacons(
+  isTest: boolean,
   knownBeacons: number[][],
   sensorPositions: number[][],
   interestingRow: number
-) {
-  const startY = interestingRow - 25;
-  const endY = interestingRow + 25;
+): [string[], number] {
+  const drawLines: string[] = [];
+  const allPositions = [...sensorPositions, ...knownBeacons];
+  const startY = isTest ? getFullMinimumY(allPositions) : interestingRow - 25;
+  const endY = isTest ? getFullMaximumY(allPositions) : interestingRow + 25;
   const { minX, maxX } = getWidth([...sensorPositions, ...knownBeacons]);
-
-  console.log("knownBecons", knownBeacons);
-  console.log("minX", minX, "maxX", maxX);
 
   let col1 = "    ";
   let col2 = "    ";
+
+  console.log(sensorPositions, knownBeacons);
+
+  const scannedPositions = getScannedPositions(
+    false,
+    sensorPositions,
+    interestingRow
+  );
 
   for (let n = minX; n <= maxX + 1; n += 1) {
     if (n % 5 !== 0) {
@@ -165,8 +231,10 @@ function drawBeacons(
     col2 += lineStr.replace("-", ""); // Don't show signed int's in the col header
   }
 
-  console.log(col1);
-  console.log(col2);
+  drawLines.push(col1);
+  drawLines.push(col2);
+
+  let answer = 0;
 
   for (let i = startY; i <= endY; i += 1) {
     let prefix = "";
@@ -189,16 +257,22 @@ function drawBeacons(
         continue;
       }
 
-      // As it stands, the isEmpty check is wrong
-      // if (isEmpty(sensorPositions, n, i)) {
-      //   line += "#";
-      //   continue;
-      // }
+      if (positionIsScanned(scannedPositions, n, i)) {
+        line += "#";
+        continue;
+      }
+
+      if (interestingRow) {
+        answer += 1;
+      }
 
       line += ".";
     }
-    console.log(line);
+
+    drawLines.push(line);
   }
+
+  return [drawLines, answer];
 }
 
 (async () => {
@@ -212,18 +286,21 @@ function drawBeacons(
   const { beaconPositions, sensorPositions } = calculateBeaconPositions(lines);
   const interestingRow = isTest ? 10 : 2_000_000;
 
-  console.log(beaconPositions);
+  const [drawLines, answer] = drawBeacons(
+    isTest,
+    beaconPositions,
+    sensorPositions,
+    interestingRow
+  );
 
-  drawBeacons(beaconPositions, sensorPositions, interestingRow);
-
-  // calculate X/Y of all known beacons
-  // for row 2mil, get all becons within 10up/10down on the Y axis
-  // draw 50 rows with row 2 mil in the middle
+  if (isTest) {
+    drawLines.forEach((l) => console.log(l));
+  }
 
   // Test answer: 26
   // Real answer:
-  const part1Answer = "TODO";
-  console.log("Part 1 Answer:", part1Answer.length);
+  const part1Answer = answer;
+  console.log("Part 1 Answer:", part1Answer);
 
   // Test answer:
   console.log("Part 2 Answer:", "TODO");
