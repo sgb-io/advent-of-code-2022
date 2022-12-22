@@ -1,6 +1,7 @@
 import { parseRawData } from "../utils/parseRawData";
 
-const PAD_PRINTING = 5;
+// Useful for displaying the diamons, but changes the answers
+const PAD_PRINTING = 0;
 
 function parseCoordinates(section: string) {
   try {
@@ -71,27 +72,44 @@ function isSensor(sensorPositions: number[][], x: number, y: number): boolean {
   return false;
 }
 
-function getScannedLinePositions(rowNum: number, posX: number): number[] {
-  // 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, reverse
+function getScannedLinePositions(
+  layers: number,
+  rowNum: number,
+  posX: number
+): number[] {
   if (rowNum === 0) {
     return [posX, posX];
   }
 
-  if (rowNum <= 9) {
+  if (rowNum <= layers) {
     return [posX - rowNum, posX + rowNum];
   }
 
-  if (rowNum > 9) {
-    const adjusted = 18 - rowNum;
+  if (rowNum > layers) {
+    const adjusted = layers * 2 - rowNum;
     return [posX - adjusted, posX + adjusted];
   }
 
   throw new Error("Unexpected case");
 }
 
+function getLayerCoords(x: number, y: number, layer: number): number[][] {
+  const points: number[][] = [];
+  for (let i = 0; i < layer; i++) {
+    const diff = layer - i;
+    points.push([x + i, y - diff]);
+    points.push([x - i, y + diff]);
+    points.push([x + diff, y + i]);
+    points.push([x - diff, y - i]);
+  }
+
+  return points;
+}
+
 function getScannedPositions(
   useNearbySensorsOnly: boolean,
   sensorPositions: number[][],
+  beaconPositions: number[][],
   interestingRow: number
 ) {
   const relevantSensorPositions = useNearbySensorsOnly
@@ -112,30 +130,33 @@ function getScannedPositions(
   const allScannedPositions: number[][] = [];
 
   for (let i = 0; i < relevantSensorPositions.length; i += 1) {
-    // 19 wide, 20 high
-    // 1 on row 0, 19 on row 9, 1 on row 20
     const [posX, posY] = relevantSensorPositions[i];
 
-    const startY = posY - 9;
-    const endY = posY + 9;
-    // const startX = posX - 10;
-    // const endX = posX + 10;
+    let diamondLayers = 0;
+    let beaconHit = false;
 
-    let rowNum = 0;
-
-    // console.log(`Sensor ${i} has posX ${posX} and posY ${posY}`);
-
-    // For every sensor, we need to loop 20 rows and 19 cols...
-    for (let scannedY = startY; scannedY <= endY; scannedY += 1) {
-      // allScannedPositions.push([scannedX, scannedY]);
-      const [rowStart, rowEnd] = getScannedLinePositions(rowNum, posX);
-      if (scannedY === 10) {
-        console.log(
-          `For rowNum ${rowNum}, at Y pos ${scannedY}, we're doing ${rowStart} to ${rowEnd}`
-        );
+    while (!beaconHit) {
+      const layerCoords = getLayerCoords(posX, posY, diamondLayers);
+      for (let c = 0; c < layerCoords.length; c += 1) {
+        if (isBeacon(beaconPositions, layerCoords[c][0], layerCoords[c][1])) {
+          beaconHit = true;
+          break;
+        }
       }
+
+      diamondLayers += 1;
+    }
+
+    const startY = posY - diamondLayers;
+    const endY = posY + diamondLayers;
+    let rowNum = 0;
+    for (let scannedY = startY; scannedY <= endY; scannedY += 1) {
+      const [rowStart, rowEnd] = getScannedLinePositions(
+        diamondLayers,
+        rowNum,
+        posX
+      );
       for (let j = rowStart; j <= rowEnd; j += 1) {
-        // console.log(`Adding X ${j}, Y ${scannedY}`);
         allScannedPositions.push([j, scannedY]);
       }
       rowNum += 1;
@@ -192,24 +213,25 @@ function getFullMaximumY(allPositions: number[][]) {
 
 function drawBeacons(
   isTest: boolean,
-  knownBeacons: number[][],
+  beaconPositions: number[][],
   sensorPositions: number[][],
   interestingRow: number
 ): [string[], number] {
   const drawLines: string[] = [];
-  const allPositions = [...sensorPositions, ...knownBeacons];
+  const allPositions = [...sensorPositions, ...beaconPositions];
   const startY = isTest ? getFullMinimumY(allPositions) : interestingRow - 25;
   const endY = isTest ? getFullMaximumY(allPositions) : interestingRow + 25;
-  const { minX, maxX } = getWidth([...sensorPositions, ...knownBeacons]);
+  const { minX, maxX } = getWidth([...sensorPositions, ...beaconPositions]);
 
   let col1 = "    ";
   let col2 = "    ";
 
-  console.log(sensorPositions, knownBeacons);
+  console.log("beacons", beaconPositions);
 
   const scannedPositions = getScannedPositions(
     false,
     sensorPositions,
+    beaconPositions,
     interestingRow
   );
 
@@ -234,7 +256,9 @@ function drawBeacons(
   drawLines.push(col1);
   drawLines.push(col2);
 
-  let answer = 0;
+  let occupiedPositions = 0;
+
+  console.log("grid X", minX, maxX);
 
   for (let i = startY; i <= endY; i += 1) {
     let prefix = "";
@@ -246,24 +270,32 @@ function drawBeacons(
       prefix = "  ";
     }
     let line = `${prefix}${i} `;
+
+    // Should be 32 wide
+
     for (let n = minX; n <= maxX; n += 1) {
-      if (isBeacon(knownBeacons, n, i)) {
+      if (isBeacon(beaconPositions, n, i)) {
         line += "B";
+        if (i === interestingRow) {
+          occupiedPositions += 1;
+        }
         continue;
       }
 
       if (isSensor(sensorPositions, n, i)) {
         line += "S";
+        if (i === interestingRow) {
+          occupiedPositions += 1;
+        }
         continue;
       }
 
       if (positionIsScanned(scannedPositions, n, i)) {
         line += "#";
+        if (i === interestingRow) {
+          occupiedPositions += 1;
+        }
         continue;
-      }
-
-      if (interestingRow) {
-        answer += 1;
       }
 
       line += ".";
@@ -272,7 +304,7 @@ function drawBeacons(
     drawLines.push(line);
   }
 
-  return [drawLines, answer];
+  return [drawLines, occupiedPositions];
 }
 
 (async () => {
